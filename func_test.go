@@ -29,7 +29,7 @@ func TestServiceFuncGoRoutine_Run(t *testing.T) {
 	assert.Eventually(t, func() bool { return *out }, time.Second, time.Millisecond)
 }
 
-func makeCancellableSleeper(iterations int, duration time.Duration) (Service, *bool) {
+func makeCancellableSleeper(iterations int, duration time.Duration) (Runner, *bool) {
 	out := false
 	return ServiceFuncGoRoutine(func(ctx context.Context) {
 		for i := 0; i < iterations; i++ {
