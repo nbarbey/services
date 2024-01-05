@@ -1,5 +1,5 @@
 package services
 
 type Service interface {
-	Run()
+	Run() (cancel func())
 }
