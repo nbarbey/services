@@ -19,15 +19,11 @@ func TestServiceFunc_Run(t *testing.T) {
 }
 
 func TestServiceFuncGoRoutine_Run(t *testing.T) {
-	out := false
-	f := ServiceFuncGoRoutine(func(ctx context.Context) {
-		time.Sleep(1 * time.Millisecond)
-		out = true
-	})
+	f, out := makeSleepService(time.Millisecond)
 
 	f.Run(context.Background())
 
-	assert.Eventually(t, func() bool { return out }, time.Second, time.Millisecond)
+	assert.Eventually(t, func() bool { return *out }, time.Second, time.Millisecond)
 }
 
 func TestServiceFuncGoRoutine_cancel(t *testing.T) {
