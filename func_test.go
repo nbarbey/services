@@ -3,6 +3,9 @@ package services
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"os"
+	"os/signal"
 	"testing"
 	"time"
 )
@@ -26,23 +29,42 @@ func TestServiceFuncGoRoutine_Run(t *testing.T) {
 	assert.Eventually(t, func() bool { return *out }, time.Second, time.Millisecond)
 }
 
-func TestServiceFuncGoRoutine_cancel(t *testing.T) {
+func makeCancellableSleeper(iterations int, duration time.Duration) (Service, *bool) {
 	out := false
-	f := ServiceFuncGoRoutine(func(ctx context.Context) {
-		for i := 0; i < 100; i++ {
+	return ServiceFuncGoRoutine(func(ctx context.Context) {
+		for i := 0; i < iterations; i++ {
 			select {
 			case <-ctx.Done():
 				out = true
 				return
 			default:
-				time.Sleep(time.Millisecond)
+				time.Sleep(duration)
 			}
 		}
-	})
+	}), &out
+}
+
+func TestServiceFuncGoRoutine_cancel(t *testing.T) {
+	f, out := makeCancellableSleeper(100, time.Millisecond)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 	defer cancel()
 
 	f.Run(ctx)
 
-	assert.Eventually(t, func() bool { return out }, time.Second, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return *out }, time.Second, 10*time.Millisecond)
+}
+
+func TestServiceFuncGoRoutine_signal_interruption(t *testing.T) {
+	f, out := makeCancellableSleeper(100, time.Millisecond)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	f.Run(ctx)
+
+	// simulate a SIGINT by sending signal to self
+	p, err := os.FindProcess(os.Getpid())
+	require.NoError(t, err)
+	require.NoError(t, p.Signal(os.Interrupt))
+
+	assert.Eventually(t, func() bool { return *out }, time.Second, 10*time.Millisecond)
 }
