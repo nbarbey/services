@@ -4,16 +4,14 @@ import "context"
 
 type ServiceFunc func(ctx context.Context)
 
-func (f ServiceFunc) Run(ctx context.Context) func() {
-	(func(ctx context.Context))(f)(ctx)
-	return func() {}
+func (f ServiceFunc) Run(ctx context.Context) {
+	f(ctx)
 }
 
 type ServiceFuncGoRoutine func(ctx context.Context)
 
-func (f ServiceFuncGoRoutine) Run(ctx context.Context) (stop func()) {
+func (f ServiceFuncGoRoutine) Run(ctx context.Context) {
 	go func() {
-		stop = (ServiceFunc)(f).Run(ctx)
+		f(ctx)
 	}()
-	return stop
 }

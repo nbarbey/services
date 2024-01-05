@@ -41,6 +41,7 @@ func makeCancellableSleeper(iterations int, duration time.Duration) (Service, *b
 				time.Sleep(duration)
 			}
 		}
+
 	}), &out
 }
 
