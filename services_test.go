@@ -37,8 +37,8 @@ func TestServices_Stop(t *testing.T) {
 	}
 	s := NewService(run, stop)
 
-	s.Run(context.Background())
-	s.Stop(context.Background())
+	s.run(context.Background())
+	s.stop(context.Background())
 
 	assert.True(t, out)
 }

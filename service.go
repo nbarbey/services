@@ -16,10 +16,18 @@ type Servicer interface {
 }
 
 type Service struct {
-	Run  func(ctx context.Context)
-	Stop func(ctx context.Context)
+	run  func(ctx context.Context)
+	stop func(ctx context.Context)
+}
+
+func (s Service) Run(ctx context.Context) {
+	s.run(ctx)
+}
+
+func (s Service) Stop(ctx context.Context) {
+	s.stop(ctx)
 }
 
 func NewService(run func(ctx context.Context), stop func(ctx context.Context)) *Service {
-	return &Service{Run: run, Stop: stop}
+	return &Service{run: run, stop: stop}
 }
