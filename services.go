@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-type Services []Service
+type Services []Servicer
 
 func (sl Services) Run(ctx context.Context) {
 	for _, s := range sl {
