@@ -16,9 +16,7 @@ func Example_http() {
 			log.Fatalf("unable to write string: %s", err)
 		}
 	})
-	service := services.ServiceFuncGoRoutine(func(ctx context.Context) {
-		log.Fatal(http.ListenAndServe(":1234", nil))
-	})
+	service := services.NewHTTPService(":1234", nil)
 
 	service.Run(context.Background())
 	defer service.Stop(context.Background())
