@@ -17,7 +17,7 @@ func Example_http() {
 			log.Fatalf("unable to write string: %s", err)
 		}
 	})
-	service := services.NewHTTPService("localhost:8081", nil, nil)
+	service := services.NewHTTPService("localhost:8081", nil, "")
 
 	service.Run(context.Background())
 	defer service.Stop(context.Background())

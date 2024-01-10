@@ -5,16 +5,17 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type HTTPService struct {
-	Server   *http.Server
+	server   *http.Server
 	basePath string
 }
 
 func (H *HTTPService) Run(ctx context.Context) {
 	go func() {
-		err := H.Server.ListenAndServe()
+		err := H.server.ListenAndServe()
 		if err != nil {
 			switch {
 			case errors.Is(http.ErrServerClosed, err):
@@ -27,7 +28,7 @@ func (H *HTTPService) Run(ctx context.Context) {
 }
 
 func (H *HTTPService) Stop(ctx context.Context) {
-	err := H.Server.Shutdown(ctx)
+	err := H.server.Shutdown(ctx)
 	if err != nil {
 		switch {
 		case errors.Is(http.ErrServerClosed, err):
@@ -38,25 +39,24 @@ func (H *HTTPService) Stop(ctx context.Context) {
 	}
 }
 
-func NewHTTPService(address string, mux *http.ServeMux, basePath *string) *HTTPService {
-	bp := "/"
-	if basePath != nil {
-		bp = *basePath
+func NewHTTPService(address string, mux *http.ServeMux, basePath string) *HTTPService {
+	if basePath == "" {
+		basePath = "/"
 	}
 	if mux == nil {
 		mux = http.DefaultServeMux
 	}
 	server := &http.Server{Addr: address, Handler: mux}
-	return &HTTPService{Server: server, basePath: bp}
+	return &HTTPService{server: server, basePath: basePath}
 }
 
-func (H *HTTPService) Merge(b Servicer) (merged bool) {
-	hb, ok := b.(*HTTPService)
+func (H *HTTPService) Merge(servicer Servicer) (merged bool) {
+	hb, ok := servicer.(*HTTPService)
 	if !ok {
 		return false
 	}
 	// cannot merge if not same address
-	if H.Server.Addr != hb.Server.Addr {
+	if H.server.Addr != hb.server.Addr {
 		return false
 	}
 	// cannot merge if same basepath
@@ -64,9 +64,20 @@ func (H *HTTPService) Merge(b Servicer) (merged bool) {
 		return false
 	}
 
+	baseHandler := H.server.Handler
 	mux := http.NewServeMux()
-	mux.Handle(H.basePath, H.Server.Handler)
-	mux.Handle(hb.basePath, hb.Server.Handler)
-	H.Server.Handler = mux
+	mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		if strings.HasPrefix(request.URL.Path, H.basePath) {
+			baseHandler.ServeHTTP(writer, request)
+			return
+		}
+		if strings.HasPrefix(request.URL.Path, hb.basePath) {
+			hb.server.Handler.ServeHTTP(writer, request)
+			return
+		}
+		writer.WriteHeader(http.StatusNotFound)
+	})
+
+	H.server.Handler = mux
 	return true
 }
