@@ -59,11 +59,13 @@ func TestHTTPService_Merge(t *testing.T) {
 	goodbye := makeConstantService(":7777", "goodbye")
 
 	s := NewServices(hello, goodbye)
+	// It should be of length 1 since both HTTP services have been merged
 	assert.Len(t, s, 1)
 
 	s.Run(context.Background())
 	defer s.Stop(context.Background())
 
+	// all defined routes are responding from the same service
 	body := getConstantBody(t, "localhost:7777", "hello")
 	assert.Equal(t, "hello", body)
 	body = getConstantBody(t, "localhost:7777", "goodbye")
