@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -10,10 +11,10 @@ import (
 	"testing"
 )
 
-func makeHelloServer() *http.ServeMux {
+func makeConstantServer(s string) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
-		_, err := io.WriteString(w, "hello")
+	mux.HandleFunc(fmt.Sprintf("/%s", s), func(w http.ResponseWriter, r *http.Request) {
+		_, err := io.WriteString(w, s)
 		if err != nil {
 			log.Fatalf("unable to write string: %s", err)
 		}
@@ -21,13 +22,17 @@ func makeHelloServer() *http.ServeMux {
 	return mux
 }
 
-func TestHTTP(t *testing.T) {
-	service := NewHTTPService(":8888", makeHelloServer())
+func makeHelloServer() *http.ServeMux {
+	return makeConstantServer("hello")
+}
 
-	service.Run(context.Background())
-	defer service.Stop(context.Background())
+func makeConstantService(addr, s string) *HTTPService {
+	basePath := fmt.Sprintf("/%s", s)
+	return NewHTTPService(addr, makeConstantServer(s), &basePath)
+}
 
-	resp, err := http.Get("http://localhost:1234/hello")
+func getConstantBody(t *testing.T, hostname, s string) string {
+	resp, err := http.Get(fmt.Sprintf("http://%s/%s", hostname, s))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -35,5 +40,32 @@ func TestHTTP(t *testing.T) {
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
+	return string(body)
+}
+
+func TestHTTP(t *testing.T) {
+	service := NewHTTPService(":8888", makeHelloServer(), nil)
+
+	service.Run(context.Background())
+	defer service.Stop(context.Background())
+
+	body := getConstantBody(t, "localhost:8888", "hello")
+
 	assert.Equal(t, "hello", string(body))
+}
+
+func TestHTTPService_Merge(t *testing.T) {
+	hello := makeConstantService(":7777", "hello")
+	goodbye := makeConstantService(":7777", "goodbye")
+
+	s := NewServices(hello, goodbye)
+	assert.Len(t, s, 1)
+
+	s.Run(context.Background())
+	defer s.Stop(context.Background())
+
+	body := getConstantBody(t, "localhost:7777", "hello")
+	assert.Equal(t, "hello", body)
+	body = getConstantBody(t, "localhost:7777", "goodbye")
+	assert.Equal(t, "goodbye", body)
 }

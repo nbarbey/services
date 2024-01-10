@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
 func Example_http() {
@@ -16,12 +17,14 @@ func Example_http() {
 			log.Fatalf("unable to write string: %s", err)
 		}
 	})
-	service := services.NewHTTPService(":1234", nil)
+	service := services.NewHTTPService("localhost:8081", nil, nil)
 
 	service.Run(context.Background())
 	defer service.Stop(context.Background())
 
-	resp, err := http.Get("http://localhost:1234/hello")
+	time.Sleep(10 * time.Millisecond)
+
+	resp, err := http.Get("http://localhost:8081/hello")
 	if err != nil {
 		log.Fatal(err)
 	}
