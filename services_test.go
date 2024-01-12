@@ -42,3 +42,20 @@ func TestServices_Stop(t *testing.T) {
 
 	assert.True(t, out)
 }
+
+func TestServices_Hierarchy(t *testing.T) {
+	fa1, oa1 := makeSleepService(time.Millisecond)
+	fa2, oa2 := makeSleepService(time.Millisecond)
+	layerA := NewServices(fa1, fa2)
+	fb1, ob1 := makeSleepService(time.Millisecond)
+	fb2, ob2 := makeSleepService(time.Millisecond)
+	layerB := NewServices(fb1, fb2)
+	services := NewServices(layerA, layerB)
+
+	services.Run(context.Background())
+
+	assert.Eventually(t, func() bool { return *oa1 }, time.Second, time.Millisecond)
+	assert.Eventually(t, func() bool { return *oa2 }, time.Second, time.Millisecond)
+	assert.Eventually(t, func() bool { return *ob1 }, time.Second, time.Millisecond)
+	assert.Eventually(t, func() bool { return *ob2 }, time.Second, time.Millisecond)
+}

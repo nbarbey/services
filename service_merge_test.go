@@ -11,14 +11,14 @@ type mergeableService struct {
 	number int
 }
 
-func (m *mergeableService) Merge(services ...Servicer) (toRemove []Servicer) {
-	for _, s := range services {
+func (m *mergeableService) Merge(services ...Servicer) (toRemove []int) {
+	for i, s := range services {
 		n, ok := s.(*mergeableService)
 		if !ok {
 			continue
 		}
 		m.number += n.number
-		toRemove = append(toRemove, s)
+		toRemove = append(toRemove, i)
 	}
 	return toRemove
 }

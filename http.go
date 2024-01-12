@@ -50,10 +50,10 @@ func NewHTTPService(address string, mux http.Handler, basePath string) *HTTPServ
 	return &HTTPService{server: server, basePath: basePath}
 }
 
-func (H *HTTPService) Merge(services ...Servicer) (toRemove []Servicer) {
-	toRemove = make([]Servicer, 0)
+func (H *HTTPService) Merge(services ...Servicer) (toRemove []int) {
+	toRemove = make([]int, 0)
 	httpServices := []*HTTPService{NewHTTPService(H.server.Addr, H.server.Handler, H.basePath)}
-	for _, servicer := range services {
+	for i, servicer := range services {
 		hb, ok := servicer.(*HTTPService)
 		switch {
 		case !ok:
@@ -63,7 +63,7 @@ func (H *HTTPService) Merge(services ...Servicer) (toRemove []Servicer) {
 		case H.basePath == hb.basePath:
 			continue
 		default:
-			toRemove = append(toRemove, servicer)
+			toRemove = append(toRemove, i)
 			httpServices = append(httpServices, hb)
 		}
 	}
