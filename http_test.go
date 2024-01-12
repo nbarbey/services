@@ -35,7 +35,7 @@ func getConstantBody(t *testing.T, hostname, s string) string {
 	t.Helper()
 	resp, err := http.Get(fmt.Sprintf("http://%s%s", hostname, s))
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status code for getting constant %s", s)
 
 	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
@@ -73,4 +73,26 @@ func TestHTTPService_Merge(t *testing.T) {
 	assert.Equal(t, "Hello", body)
 	body = getConstantBody(t, "localhost:7777", "/service2/goodbye")
 	assert.Equal(t, "Goodbye", body)
+}
+
+func TestHTTPService_Merge10(t *testing.T) {
+	hellos := make(Services, 10)
+	for i := 0; i < 10; i++ {
+		hellos[i] = makeConstantService(":7777", "Hello", fmt.Sprintf("/service%d/hello", i), fmt.Sprintf("/service%d", i))
+	}
+
+	s := NewServices(hellos...)
+	// It should be of length 1 since both HTTP services have been merged
+	require.Len(t, s, 1)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	s.Run(ctx)
+	defer s.Stop(ctx)
+
+	// all defined routes are responding from the same service
+	for i := 0; i < 10; i++ {
+		body := getConstantBody(t, "localhost:7777", fmt.Sprintf("/service%d/hello", i))
+		assert.Equal(t, "Hello", body)
+	}
 }
