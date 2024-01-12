@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -131,4 +132,23 @@ func TestHTTPService_Merge_cannot_merge_different_addr(t *testing.T) {
 	s := NewServices(hello, goodbye)
 	// It should be of length 2 since both HTTP services are on same base path
 	assert.Len(t, s, 2)
+}
+
+func TestHTTPService_Merge_cannot_merge_with_non_http(t *testing.T) {
+	hello := makeConstantService(":7770", "Hello", "/service1/hello", "/service1")
+	other := ServiceFunc(func(ctx context.Context) {})
+
+	s := NewServices(hello, other)
+	// It should be of length 2 since both HTTP services are on same base path
+	assert.Len(t, s, 2)
+}
+
+func TestHTTPService_Stop(t *testing.T) {
+	service := NewHTTPService(":8889", makeHelloServer(), "")
+
+	service.Run(context.Background())
+	service.Stop(context.Background())
+
+	_, err := http.Get("http://localhost:8889/wrong-path")
+	assert.ErrorIs(t, err, syscall.ECONNREFUSED)
 }
