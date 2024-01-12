@@ -96,3 +96,39 @@ func TestHTTPService_Merge10(t *testing.T) {
 		assert.Equal(t, "Hello", body)
 	}
 }
+
+func TestHTTPService_Merge_not_found(t *testing.T) {
+	hello := makeConstantService(":7778", "Hello", "/service1/hello", "/service1")
+	goodbye := makeConstantService(":7778", "Goodbye", "/service2/goodbye", "/service2")
+
+	s := NewServices(hello, goodbye)
+	// It should be of length 1 since both HTTP services have been merged
+	require.Len(t, s, 1)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	s.Run(ctx)
+	defer s.Stop(ctx)
+
+	resp, err := http.Get("http://localhost:7778/wrong-path")
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
+func TestHTTPService_Merge_cannot_merge_same_base_path(t *testing.T) {
+	hello := makeConstantService(":7778", "Hello", "/service1/hello", "/service1")
+	goodbye := makeConstantService(":7778", "Goodbye", "/service1/goodbye", "/service1")
+
+	s := NewServices(hello, goodbye)
+	// It should be of length 2 since both HTTP services are on same base path
+	assert.Len(t, s, 2)
+}
+
+func TestHTTPService_Merge_cannot_merge_different_addr(t *testing.T) {
+	hello := makeConstantService(":7770", "Hello", "/service1/hello", "/service1")
+	goodbye := makeConstantService(":7771", "Goodbye", "/service1/goodbye", "/service1")
+
+	s := NewServices(hello, goodbye)
+	// It should be of length 2 since both HTTP services are on same base path
+	assert.Len(t, s, 2)
+}
