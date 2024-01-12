@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 type mergeableService struct {
@@ -38,6 +39,22 @@ func TestHTTPService_Merge_numbers(t *testing.T) {
 	require.True(t, ok)
 	s := NewServices(s1, s2)
 	require.Len(t, s, 1)
+
+	m := s[0]
+	n, ok := m.(*mergeableService)
+	require.True(t, ok)
+
+	assert.Equal(t, 2, n.number)
+}
+
+func TestHTTPService_Merge_numbers_with_func_in_between(t *testing.T) {
+	s1 := &mergeableService{number: 1}
+	s2, _ := makeSleepService(time.Millisecond)
+	s3 := &mergeableService{number: 1}
+	_, ok := Servicer(s1).(MergeableServicer)
+	require.True(t, ok)
+	s := NewServices(s1, s2, s3)
+	require.Len(t, s, 2)
 
 	m := s[0]
 	n, ok := m.(*mergeableService)
