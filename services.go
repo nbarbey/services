@@ -23,16 +23,11 @@ func NewServices(servicers ...Servicer) Services {
 			continue
 		}
 
-		// do not merge current service with itself
-		slist := append(servicers[:i], servicers[i+1:]...)
-		toRemove := m1.Merge(slist...)
+		// all services before i have already been tested, so no need to try again
+		toRemove := m1.Merge(servicers[i+1:]...)
 		// we need to fix toRemove indices to account for pruned current service at index i
 		for _, j := range toRemove {
-			if j < i {
-				marked[j] = true
-			} else {
-				marked[j+1] = true
-			}
+			marked[i+1+j] = true
 		}
 
 		// we merged all we could, let's keep s1
