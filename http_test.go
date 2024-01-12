@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func makeConstantServer(route, s string) *http.ServeMux {
@@ -60,10 +61,12 @@ func TestHTTPService_Merge(t *testing.T) {
 
 	s := NewServices(hello, goodbye)
 	// It should be of length 1 since both HTTP services have been merged
-	assert.Len(t, s, 1)
+	require.Len(t, s, 1)
 
-	s.Run(context.Background())
-	defer s.Stop(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	s.Run(ctx)
+	defer s.Stop(ctx)
 
 	// all defined routes are responding from the same service
 	body := getConstantBody(t, "localhost:7777", "/service1/hello")

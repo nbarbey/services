@@ -39,7 +39,7 @@ func (H *HTTPService) Stop(ctx context.Context) {
 	}
 }
 
-func NewHTTPService(address string, mux *http.ServeMux, basePath string) *HTTPService {
+func NewHTTPService(address string, mux http.Handler, basePath string) *HTTPService {
 	if basePath == "" {
 		basePath = "/"
 	}
@@ -50,34 +50,35 @@ func NewHTTPService(address string, mux *http.ServeMux, basePath string) *HTTPSe
 	return &HTTPService{server: server, basePath: basePath}
 }
 
-func (H *HTTPService) Merge(servicer Servicer) (merged bool) {
-	hb, ok := servicer.(*HTTPService)
-	if !ok {
-		return false
-	}
-	// cannot merge if not same address
-	if H.server.Addr != hb.server.Addr {
-		return false
-	}
-	// cannot merge if same basepath
-	if H.basePath == hb.basePath {
-		return false
+func (H *HTTPService) Merge(services ...Servicer) (toRemove []Servicer) {
+	toRemove = make([]Servicer, 0)
+	httpServices := []*HTTPService{NewHTTPService(H.server.Addr, H.server.Handler, H.basePath)}
+	for _, servicer := range services {
+		hb, ok := servicer.(*HTTPService)
+		switch {
+		case !ok:
+			continue
+		case H.server.Addr != hb.server.Addr:
+			continue
+		case H.basePath == hb.basePath:
+			continue
+		default:
+			toRemove = append(toRemove, servicer)
+			httpServices = append(httpServices, hb)
+		}
 	}
 
-	baseHandler := H.server.Handler
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		if strings.HasPrefix(request.URL.Path, H.basePath) {
-			baseHandler.ServeHTTP(writer, request)
-			return
-		}
-		if strings.HasPrefix(request.URL.Path, hb.basePath) {
-			hb.server.Handler.ServeHTTP(writer, request)
-			return
+		for _, hb := range httpServices {
+			if strings.HasPrefix(request.URL.Path, hb.basePath) {
+				hb.server.Handler.ServeHTTP(writer, request)
+				return
+			}
 		}
 		writer.WriteHeader(http.StatusNotFound)
 	})
 
 	H.server.Handler = mux
-	return true
+	return
 }

@@ -11,27 +11,25 @@ func NewServices(servicers ...Servicer) Services {
 	// if so, we do and remove the merged services from the list
 	out := Services{}
 	marked := make(map[Servicer]bool)
-	for _, s1 := range servicers {
+	for i, s1 := range servicers {
+		if marked[s1] {
+			// already merged in another, skipping
+			continue
+		}
 		m1, ok := s1.(MergeableServicer)
 		if !ok {
 			// not mergeable but we keep it
 			out = append(out, s1)
 			continue
 		}
-		if marked[s1] {
-			// already merged in another, skipping
-			continue
+
+		// do not merge current service with itself
+		slist := append(servicers[:i], servicers[i+1:]...)
+		toRemove := m1.Merge(slist...)
+		for _, s2 := range toRemove {
+			marked[s2] = true
 		}
-		for _, s2 := range servicers {
-			// we skip already merged services
-			if marked[s2] {
-				continue
-			}
-			merged := m1.Merge(s2)
-			if merged {
-				marked[s2] = true
-			}
-		}
+
 		// we merged all we could, let's keep s1
 		out = append(out, s1)
 	}
